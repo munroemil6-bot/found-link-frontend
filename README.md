@@ -1,29 +1,56 @@
-# React + Vite
+# Found-Link Kenya frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React and Vite frontend for the Found-Link Kenya document recovery API.
 
-## Firebase Google sign-in
+## Local setup
 
-Copy `.env.example` to `.env.local` and fill in the Firebase web app values and
-the Django API base URL. `.env.local` is ignored by Git. Enable Google as a
-sign-in provider in the Firebase console and add your local development host to
-the authorized domains. The Google login sends a Firebase ID token to
-`/api/auth/firebase/`; the backend must verify that token before trusting it.
-Firebase web configuration is public client configuration. Never put Firebase
-service-account credentials in this frontend.
+Install dependencies and create the local environment file if it does not
+already exist (this preserves any Firebase values already configured locally):
 
-Currently, two official plugins are available:
+```sh
+npm install
+test -f .env.local || cp .env.example .env.local
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Set the Firebase web app values in `.env.local`. The Firebase project is
+`found-link-kenya`; keep `.env.local` untracked. Set `VITE_API_URL` to the
+Django base URL (the default local backend is `http://127.0.0.1:8000`).
+Restart Vite after changing environment variables.
 
-## React Compiler
+Enable Google as a sign-in provider in Firebase Authentication and add the
+frontend's local hostname to Firebase's authorized domains. The frontend uses
+Firebase web configuration only. Never put service-account credentials or
+database passwords in this project.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Start the frontend:
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+```sh
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+Start Django separately from `backend/` if it is not already running:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```sh
+cd ../backend
+source ../venv/bin/activate
+python manage.py runserver
+```
+
+## Authentication and API
+
+Firebase Google sign-in protects the dashboard routes. `src/lib/api.js`
+attaches the signed-in user's Firebase ID token as a bearer token to every API
+request. Django verifies the token; the frontend does not create a Django
+session. The signed-in profile must also have the appropriate backend role for
+write operations.
+
+The dashboard currently loads `/api/documents/` and shows counts based on the
+records returned by that endpoint. The document registration, search, pickup
+point, and detail routes are present as placeholders for subsequent work.
+
+## Checks
+
+```sh
+npm run build
+npm run lint
+```
