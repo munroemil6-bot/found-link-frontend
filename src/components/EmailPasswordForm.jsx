@@ -1,37 +1,26 @@
 import { useState } from 'react'
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  signInWithEmailAndPassword,
-  signOut,
-} from 'firebase/auth'
-import { auth } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 
 function getAuthErrorMessage(error) {
-  switch (error?.code) {
-    case 'auth/email-already-in-use':
-      return 'An account already exists for this email. Sign in instead.'
-    case 'auth/invalid-credential':
-    case 'auth/invalid-login-credentials':
-    case 'auth/user-not-found':
-    case 'auth/wrong-password':
-      return 'The email or password is incorrect.'
-    case 'auth/invalid-email':
-      return 'Enter a valid email address.'
-    case 'auth/weak-password':
-      return 'Choose a stronger password with at least 6 characters.'
-    case 'auth/password-does-not-meet-requirements':
-      return 'Choose a password that meets the requirements shown by your Firebase project.'
-    case 'auth/too-many-requests':
-      return 'Too many attempts. Wait a moment and try again.'
-    case 'auth/operation-not-allowed':
-      return 'Email and password sign-in is not enabled in Firebase Authentication.'
-    case 'auth/network-request-failed':
-      return 'Could not reach Firebase. Check your internet connection and try again.'
-    default:
-      return error instanceof Error ? error.message : 'Authentication failed. Please try again.'
+  const message = error instanceof Error ? error.message : ''
+  const code = error?.code
+
+  if (code === 'user_already_exists') {
+    return 'An account already exists for this email. Sign in instead.'
   }
+  if (code === 'invalid_credentials' || code === 'invalid_grant') {
+    return 'The email or password is incorrect.'
+  }
+  if (code === 'email_not_confirmed') {
+    return 'Verify your email address before signing in.'
+  }
+  if (code === 'weak_password') {
+    return 'Choose a stronger password.'
+  }
+  if (message.toLowerCase().includes('fetch')) {
+    return 'Could not reach Supabase. Check your project URL and internet connection.'
+  }
+  return message || 'Authentication failed. Please try again.'
 }
 
 function EmailPasswordForm() {
@@ -44,35 +33,55 @@ function EmailPasswordForm() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    setIsBusy(true)
     setMessage('')
     setErrorMessage('')
 
+    if (!supabase) {
+      setErrorMessage('Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.')
+      return
+    }
+
+    setIsBusy(true)
     try {
       const normalizedEmail = email.trim()
-
       if (mode === 'register') {
-        const credential = await createUserWithEmailAndPassword(
-          auth,
-          normalizedEmail,
+        const { data, error } = await supabase.auth.signUp({
+          email: normalizedEmail,
           password,
-        )
-        await sendEmailVerification(credential.user)
-        await signOut(auth)
+          options: {
+            emailRedirectTo: new URL('/login', window.location.origin).toString(),
+          },
+        })
+        if (error) {
+          throw error
+        }
+
+        if (data.session && !data.user?.email_confirmed_at) {
+          await supabase.auth.signOut()
+        }
         setPassword('')
-        setMessage('Account created. Check your email and verify your address before signing in.')
+        setMessage(
+          data.session && data.user?.email_confirmed_at
+            ? 'Your account is ready.'
+            : 'Account created. Check your email and verify your address before signing in.',
+        )
         return
       }
 
-      const credential = await signInWithEmailAndPassword(auth, normalizedEmail, password)
-      if (!credential.user.emailVerified) {
-        await sendEmailVerification(credential.user)
-        await signOut(auth)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      })
+      if (error) {
+        throw error
+      }
+      if (!data.user.email_confirmed_at) {
+        await supabase.auth.signOut()
         setPassword('')
-        setMessage('Please verify your email before signing in. We sent you a new verification link.')
+        setMessage('Verify your email address before signing in.')
       }
     } catch (error) {
-      console.error('Email and password authentication failed:', error)
+      console.error('Supabase email authentication failed:', error)
       setErrorMessage(getAuthErrorMessage(error))
     } finally {
       setIsBusy(false)
@@ -80,24 +89,29 @@ function EmailPasswordForm() {
   }
 
   const handlePasswordReset = async () => {
-    setIsBusy(true)
     setMessage('')
     setErrorMessage('')
+    if (!email.trim()) {
+      setErrorMessage('Enter your email address first, then choose Forgot password.')
+      return
+    }
+    if (!supabase) {
+      setErrorMessage('Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.')
+      return
+    }
 
+    setIsBusy(true)
     try {
-      if (!email.trim()) {
-        setErrorMessage('Enter your email address first, then choose Forgot password.')
-        return
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: new URL('/reset-password', window.location.origin).toString(),
+      })
+      if (error) {
+        throw error
       }
-      await sendPasswordResetEmail(auth, email.trim())
       setMessage('If an account exists for this email, a password reset link is on its way.')
     } catch (error) {
-      console.error('Password reset request failed:', error)
-      setErrorMessage(
-        error?.code === 'auth/user-not-found'
-          ? 'If an account exists for this email, a password reset link is on its way.'
-          : getAuthErrorMessage(error),
-      )
+      console.error('Supabase password reset request failed:', error)
+      setErrorMessage(getAuthErrorMessage(error))
     } finally {
       setIsBusy(false)
     }

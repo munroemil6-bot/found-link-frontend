@@ -32,6 +32,11 @@ function Login({ user, isLoading, authError }) {
         <p className="mb-6 mt-3 leading-6 text-slate-600">
           Sign in to continue to your Found Link Kenya account.
         </p>
+        {location.state?.message && (
+          <p className="mb-4 text-left text-sm leading-6 text-emerald-800" role="status">
+            {location.state.message}
+          </p>
+        )}
         {authError && (
           <p className="mb-4 text-left text-sm leading-6 text-red-700" role="alert">
             {authError}
