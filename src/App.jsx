@@ -22,8 +22,13 @@ function App() {
     return onAuthStateChanged(
       auth,
       (currentUser) => {
-        setUser(currentUser)
-        setAuthError('')
+        if (currentUser && !currentUser.emailVerified) {
+          setUser(null)
+          setAuthError('Verify your email address before continuing.')
+        } else {
+          setUser(currentUser)
+          setAuthError('')
+        }
         setIsLoading(false)
       },
       (error) => {
