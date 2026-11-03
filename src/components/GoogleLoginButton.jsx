@@ -4,39 +4,14 @@ import { auth, googleProvider } from '../lib/firebase'
 
 function GoogleLoginButton() {
   const [isSigningIn, setIsSigningIn] = useState(false)
-  const [message, setMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
   const handleGoogleLogin = async () => {
     setIsSigningIn(true)
-    setMessage('')
     setErrorMessage('')
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL
-
-      if (!apiUrl) {
-        throw new Error('Set VITE_API_URL in .env.local to connect to the backend.')
-      }
-
-      const result = await signInWithPopup(auth, googleProvider)
-      const idToken = await result.user.getIdToken()
-      const response = await fetch(
-        `${apiUrl.replace(/\/+$/, '')}/api/auth/firebase/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ idToken }),
-        },
-      )
-
-      if (!response.ok) {
-        throw new Error(`Backend authentication failed (HTTP ${response.status}).`)
-      }
-
-      setMessage('The backend responded successfully. A Django session is not established yet.')
+      await signInWithPopup(auth, googleProvider)
     } catch (error) {
       console.error('Google login failed:', error)
       setErrorMessage(
@@ -48,14 +23,14 @@ function GoogleLoginButton() {
   }
 
   return (
-    <div className="google-login">
+    <div>
       <button
-        className="google-login__button"
+        className="inline-flex min-h-13 w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 font-semibold text-slate-800 transition hover:bg-slate-50 focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-emerald-700 disabled:cursor-wait disabled:opacity-70"
         disabled={isSigningIn}
         onClick={handleGoogleLogin}
         type="button"
       >
-        <svg aria-hidden="true" viewBox="0 0 48 48" className="google-login__icon">
+        <svg aria-hidden="true" viewBox="0 0 48 48" className="size-5">
           <path
             fill="#4285F4"
             d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.8 6.1-15Z"
@@ -75,9 +50,8 @@ function GoogleLoginButton() {
         </svg>
         {isSigningIn ? 'Signing in…' : 'Continue with Google'}
       </button>
-      {message && <p className="google-login__message">{message}</p>}
       {errorMessage && (
-        <p className="google-login__message google-login__message--error" role="alert">
+        <p className="mt-4 text-sm leading-6 text-red-700" role="alert">
           {errorMessage}
         </p>
       )}
