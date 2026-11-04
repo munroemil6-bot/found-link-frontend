@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { auth } from './firebase'
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/+$/, '')
 
@@ -10,20 +10,14 @@ export async function apiRequest(endpoint, options = {}) {
     throw new Error('API endpoints must start with "/".')
   }
 
-  if (!supabase) {
-    throw new Error('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.')
-  }
-
-  const { data, error } = await supabase.auth.getSession()
-  if (error) {
-    throw new Error(`Could not read the Supabase session: ${error.message}`)
-  }
-  if (!data.session) {
+  const currentUser = auth.currentUser
+  if (!currentUser) {
     throw new Error('Please sign in first.')
   }
 
+  const idToken = await currentUser.getIdToken()
   const headers = new Headers(options.headers)
-  headers.set('Authorization', `Bearer ${data.session.access_token}`)
+  headers.set('Authorization', `Bearer ${idToken}`)
 
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')

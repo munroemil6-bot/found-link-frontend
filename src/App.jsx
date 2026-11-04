@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { auth } from './lib/firebase'
 import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLayout from './layouts/DashboardLayout'
 import Dashboard from './pages/Dashboard'
@@ -10,49 +11,34 @@ import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import PickupPoints from './pages/PickupPoints'
 import RegisterDocument from './pages/RegisterDocument'
-import ResetPassword from './pages/ResetPassword'
 import SearchDocuments from './pages/SearchDocuments'
 
 function App() {
   const [user, setUser] = useState(null)
-  const [isLoading, setIsLoading] = useState(isSupabaseConfigured)
-  const [authError, setAuthError] = useState(
-    isSupabaseConfigured
-      ? ''
-      : 'Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.',
-  )
+  const [isLoading, setIsLoading] = useState(true)
+  const [authError, setAuthError] = useState('')
 
   useEffect(() => {
-    if (!isSupabaseConfigured || !supabase) {
-      return undefined
-    }
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null
-      if (currentUser && !currentUser.email_confirmed_at) {
+    return onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        if (currentUser && !currentUser.emailVerified) {
+          setUser(null)
+          setAuthError('Verify your email address before continuing.')
+        } else {
+          setUser(currentUser)
+          setAuthError('')
+        }
+        setIsLoading(false)
+      },
+      (error) => {
+        console.error('Firebase auth state failed:', error)
         setUser(null)
-        setAuthError('Verify your email address before continuing.')
-      } else {
-        setUser(currentUser)
-        setAuthError('')
-      }
-      setIsLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
+        setAuthError('Could not restore your sign-in state. Sign in again to continue.')
+        setIsLoading(false)
+      },
+    )
   }, [])
-
-  const handleLogout = async () => {
-    if (!supabase) {
-      throw new Error('Supabase is not configured.')
-    }
-    const { error } = await supabase.auth.signOut()
-    if (error) {
-      throw error
-    }
-  }
 
   return (
     <BrowserRouter>
@@ -61,11 +47,13 @@ function App() {
           path="/login"
           element={<Login user={user} isLoading={isLoading} authError={authError} />}
         />
-        <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<ProtectedRoute user={user} isLoading={isLoading} />}>
           <Route
             element={
-              <DashboardLayout user={user} onLogout={handleLogout} />
+              <DashboardLayout
+                user={user}
+                onLogout={() => signOut(auth)}
+              />
             }
           >
             <Route index element={<Dashboard />} />

@@ -1,31 +1,27 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { signInWithPopup } from 'firebase/auth'
+import { auth, googleProvider } from '../lib/firebase'
 
 function GoogleLoginButton() {
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
   const handleGoogleLogin = async () => {
-    setErrorMessage('')
-    if (!supabase) {
-      setErrorMessage('Configure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local.')
-      return
-    }
-
     setIsSigningIn(true)
+    setErrorMessage('')
+
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: new URL('/login', window.location.origin).toString(),
-        },
-      })
-      if (error) {
-        throw error
-      }
+      await signInWithPopup(auth, googleProvider)
     } catch (error) {
-      console.error('Supabase Google sign-in failed:', error)
-      setErrorMessage(error instanceof Error ? error.message : 'Google sign-in failed.')
+      console.error('Firebase Google sign-in failed:', error)
+      setErrorMessage(
+        error?.code === 'auth/configuration-not-found'
+          ? 'Firebase Authentication is not enabled for this project. Enable it in Firebase Console and turn on Google.'
+          : error instanceof Error
+            ? error.message
+            : 'Google sign-in failed. Please try again.',
+      )
+    } finally {
       setIsSigningIn(false)
     }
   }
@@ -56,7 +52,7 @@ function GoogleLoginButton() {
             d="M24 12.1c3 0 5.7 1 7.8 3.1l5.8-5.8C34.1 6.1 29.5 4 24 4A20 20 0 0 0 5.8 15.2l6.8 5.3c1.6-4.8 6.1-8.4 11.4-8.4Z"
           />
         </svg>
-        {isSigningIn ? 'Redirecting…' : 'Continue with Google'}
+        {isSigningIn ? 'Signing in…' : 'Continue with Google'}
       </button>
       {errorMessage && (
         <p className="mt-4 text-sm leading-6 text-red-700" role="alert">
