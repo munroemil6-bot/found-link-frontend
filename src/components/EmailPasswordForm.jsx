@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 
@@ -27,6 +28,8 @@ function getAuthErrorMessage(error) {
       return 'Email and password sign-in is not enabled in Firebase Authentication.'
     case 'auth/configuration-not-found':
       return 'Firebase Authentication is not enabled for this project. Enable it in Firebase Console and turn on Email/Password.'
+    case 'auth/unauthorized-domain':
+      return 'This site is not authorized in Firebase. Add localhost under Authentication settings > Authorized domains.'
     case 'auth/network-request-failed':
       return 'Could not reach Firebase. Check your internet connection and try again.'
     default:
@@ -36,6 +39,7 @@ function getAuthErrorMessage(error) {
 
 function EmailPasswordForm() {
   const [mode, setMode] = useState('sign-in')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isBusy, setIsBusy] = useState(false)
@@ -56,10 +60,11 @@ function EmailPasswordForm() {
           normalizedEmail,
           password,
         )
+        await updateProfile(credential.user, { displayName: fullName.trim() })
         await sendEmailVerification(credential.user)
         await signOut(auth)
         setPassword('')
-        setMessage('Account created. Check your email and verify your address before signing in.')
+        setMessage('Account created. Verify your email, then sign in to save your profile to the application database.')
         return
       }
 
@@ -103,6 +108,24 @@ function EmailPasswordForm() {
   return (
     <div className="text-left">
       <form className="space-y-4" onSubmit={handleSubmit}>
+        {isRegistering && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="full-name">
+              Full name
+            </label>
+            <input
+              autoComplete="name"
+              className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20"
+              id="full-name"
+              name="name"
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder="Your full name"
+              required
+              type="text"
+              value={fullName}
+            />
+          </div>
+        )}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700" htmlFor="email">
             Email address

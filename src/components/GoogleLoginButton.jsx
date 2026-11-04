@@ -16,10 +16,18 @@ function GoogleLoginButton() {
       console.error('Firebase Google sign-in failed:', error)
       setErrorMessage(
         error?.code === 'auth/configuration-not-found'
-          ? 'Firebase Authentication is not enabled for this project. Enable it in Firebase Console and turn on Google.'
-          : error instanceof Error
-            ? error.message
-            : 'Google sign-in failed. Please try again.',
+          ? 'Firebase Authentication is not enabled for this project. Enable Authentication and the Google provider in Firebase Console.'
+          : error?.code === 'auth/operation-not-allowed'
+            ? 'Google sign-in is disabled. Enable the Google provider in Firebase Console.'
+            : error?.code === 'auth/unauthorized-domain'
+              ? 'This site is not authorized in Firebase. Add localhost under Authentication settings > Authorized domains.'
+              : error?.code === 'auth/popup-blocked'
+                ? 'Your browser blocked the Google sign-in popup. Allow popups for this site and try again.'
+                : error?.code === 'auth/popup-closed-by-user'
+                  ? 'Google sign-in was cancelled before it finished.'
+                  : error instanceof Error
+                    ? error.message
+                    : 'Google sign-in failed. Please try again.',
       )
     } finally {
       setIsSigningIn(false)

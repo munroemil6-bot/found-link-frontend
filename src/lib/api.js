@@ -23,14 +23,31 @@ export async function apiRequest(endpoint, options = {}) {
     headers.set('Content-Type', 'application/json')
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  })
+  let response
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    })
+  } catch (error) {
+    throw new Error(
+      'Could not reach the application backend. Check the API URL and CORS settings.',
+      { cause: error },
+    )
+  }
 
   if (!response.ok) {
-    const errorMessage = await response.text()
-    throw new Error(errorMessage || `Request failed: ${response.status}`)
+    const responseText = await response.text()
+    let errorMessage = `Request failed: ${response.status}`
+    try {
+      const errorData = JSON.parse(responseText)
+      errorMessage = errorData.detail || errorData.message || errorMessage
+    } catch {
+      if (responseText && !responseText.trimStart().startsWith('<')) {
+        errorMessage = responseText
+      }
+    }
+    throw new Error(errorMessage)
   }
 
   if (response.status === 204) {

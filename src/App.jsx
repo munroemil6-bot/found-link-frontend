@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { auth } from './lib/firebase'
+import { apiRequest } from './lib/api'
 import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLayout from './layouts/DashboardLayout'
 import Dashboard from './pages/Dashboard'
@@ -17,27 +18,79 @@ function App() {
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [authError, setAuthError] = useState('')
+  const authErrorRef = useRef('')
+  const activeRef = useRef(false)
+  const authChangeRef = useRef(0)
 
   useEffect(() => {
-    return onAuthStateChanged(
+    activeRef.current = true
+    const unsubscribe = onAuthStateChanged(
       auth,
       (currentUser) => {
-        if (currentUser && !currentUser.emailVerified) {
+        const change = ++authChangeRef.current
+        if (!currentUser) {
           setUser(null)
-          setAuthError('Verify your email address before continuing.')
-        } else {
-          setUser(currentUser)
-          setAuthError('')
+          setAuthError(authErrorRef.current)
+          setIsLoading(false)
+          return
         }
-        setIsLoading(false)
+
+        setIsLoading(true)
+        if (!currentUser.emailVerified) {
+          authErrorRef.current = 'Verify your email address before continuing.'
+          setUser(null)
+          setAuthError(authErrorRef.current)
+          setIsLoading(false)
+          signOut(auth).catch((error) => {
+            console.error('Could not sign out an unverified Firebase user:', error)
+          })
+          return
+        }
+
+        authErrorRef.current = ''
+        setAuthError('')
+
+        async function syncProfile() {
+          try {
+            await apiRequest('/api/auth/profile/')
+            if (activeRef.current && change === authChangeRef.current) {
+              setUser(currentUser)
+            }
+          } catch (error) {
+            if (!activeRef.current || change !== authChangeRef.current) {
+              return
+            }
+            console.error('Could not save the Firebase profile to the backend:', error)
+            const detail = error instanceof Error ? ` ${error.message}` : ''
+            authErrorRef.current =
+              `Signed in with Firebase, but could not save your profile to the application database.${detail}`
+            setUser(null)
+            setAuthError(authErrorRef.current)
+            await signOut(auth).catch((signOutError) => {
+              console.error('Could not sign out after profile synchronization failed:', signOutError)
+            })
+          } finally {
+            if (activeRef.current && change === authChangeRef.current) {
+              setIsLoading(false)
+            }
+          }
+        }
+
+        syncProfile()
       },
       (error) => {
         console.error('Firebase auth state failed:', error)
+        authErrorRef.current =
+          'Could not restore your sign-in state. Sign in again to continue.'
         setUser(null)
-        setAuthError('Could not restore your sign-in state. Sign in again to continue.')
+        setAuthError(authErrorRef.current)
         setIsLoading(false)
       },
     )
+    return () => {
+      activeRef.current = false
+      unsubscribe()
+    }
   }, [])
 
   return (
