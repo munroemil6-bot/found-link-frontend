@@ -11,18 +11,25 @@ const statDefinitions = [
   { label: 'Total Records', key: 'total', icon: Package },
 ]
 
-function getDocuments(data) {
-  if (Array.isArray(data)) {
-    return data
+const emptyCounts = { found: 0, awaiting: 0, returned: 0, total: 0 }
+
+function getSummary(data) {
+  if (
+    !data
+    || !data.counts
+    || !Array.isArray(data.recent_documents)
+    || !statDefinitions.every(({ key }) => Number.isInteger(data.counts[key]))
+  ) {
+    throw new Error('The document summary API returned an unexpected response.')
   }
-  if (data && Array.isArray(data.results)) {
-    return data.results
-  }
-  throw new Error('The documents API returned an unexpected response.')
+  return data
 }
 
 function Dashboard() {
-  const [documents, setDocuments] = useState([])
+  const [summary, setSummary] = useState({
+    counts: emptyCounts,
+    recent_documents: [],
+  })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [reloadKey, setReloadKey] = useState(0)
@@ -35,12 +42,12 @@ function Dashboard() {
       setError('')
 
       try {
-        const response = await apiRequest('/api/documents/', {
+        const response = await apiRequest('/api/documents/summary/', {
           signal: controller.signal,
         })
-        const records = getDocuments(response)
+        const data = getSummary(response)
         if (!controller.signal.aborted) {
-          setDocuments(records)
+          setSummary(data)
         }
       } catch (requestError) {
         if (!controller.signal.aborted) {
@@ -61,15 +68,6 @@ function Dashboard() {
     loadDocuments()
     return () => controller.abort()
   }, [reloadKey])
-
-  const counts = {
-    found: documents.filter((document) => document.status === 'found').length,
-    awaiting: documents.filter(
-      (document) => document.status === 'awaiting_collection',
-    ).length,
-    returned: documents.filter((document) => document.status === 'returned').length,
-    total: documents.length,
-  }
 
   return (
     <div className="space-y-8">
@@ -105,7 +103,7 @@ function Dashboard() {
           <StatCard
             key={key}
             label={label}
-            value={counts[key]}
+            value={summary.counts[key]}
             icon={icon}
             isLoading={isLoading}
           />
@@ -130,12 +128,12 @@ function Dashboard() {
           <p className="mt-5 text-sm text-slate-500" role="status">
             Loading records…
           </p>
-        ) : documents.length === 0 && !error ? (
+        ) : summary.recent_documents.length === 0 && !error ? (
           <p className="mt-5 text-sm text-slate-500">
             No documents have been registered yet.
           </p>
         ) : (
-          documents.length > 0 && (
+          summary.recent_documents.length > 0 && (
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="border-b border-slate-200 text-slate-500">
@@ -150,7 +148,7 @@ function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents.slice(0, 5).map((document) => (
+                  {summary.recent_documents.map((document) => (
                     <tr key={document.id} className="border-b border-slate-100 last:border-0">
                       <td className="py-4 pr-4 capitalize text-slate-800">
                         {document.document_type.replaceAll('_', ' ')}

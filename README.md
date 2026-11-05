@@ -54,8 +54,10 @@ the browser.
 Grant officer or administrator roles only through Django admin or another
 trusted backend process.
 
-The dashboard and found-documents pages load `/api/documents/`. The found
-documents page supports client-side filtering, the registration form posts new
+The dashboard loads database-aggregated counts and the five latest entries from
+`/api/documents/summary/`. The found-documents page fetches 20 records at a
+time from `/api/documents/` and loads subsequent pages on demand; search is
+debounced and performed by the backend. The registration form posts new
 records to `/api/documents/`, and the pickup-points page loads
 `/api/pickup-points/`. The dedicated search and document-detail routes are
 placeholders for subsequent work.

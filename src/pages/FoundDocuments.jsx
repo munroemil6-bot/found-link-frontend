@@ -1,35 +1,62 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { apiRequest } from '../lib/api'
 
-function getDocuments(data) {
-  const documents = Array.isArray(data) ? data : data?.results
-  if (!Array.isArray(documents)) {
+const PAGE_SIZE = 20
+
+function getDocumentPage(data) {
+  if (Array.isArray(data)) {
+    return { documents: data, nextOffset: null }
+  }
+  if (!Array.isArray(data?.results)) {
     throw new Error('The documents API returned an unexpected response.')
   }
-  return documents
+  return {
+    documents: data.results,
+    nextOffset: data.next ? data.results.length : null,
+  }
 }
 
 function FoundDocuments() {
   const location = useLocation()
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [nextOffset, setNextOffset] = useState(null)
+  const [retryKey, setRetryKey] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
 
     async function loadDocuments() {
+      setLoading(true)
+      setError('')
+      setDocuments([])
+      setNextOffset(null)
+
       try {
-        const data = await apiRequest('/api/documents/', {
+        const params = new URLSearchParams({
+          limit: String(PAGE_SIZE),
+          offset: '0',
+        })
+        if (search.trim()) {
+          params.set('search', search.trim())
+        }
+        const data = await apiRequest(`/api/documents/?${params}`, {
           signal: controller.signal,
         })
         if (!controller.signal.aborted) {
-          setDocuments(getDocuments(data))
+          const page = getDocumentPage(data)
+          setDocuments(page.documents)
+          setNextOffset(
+            page.nextOffset === null ? null : page.documents.length,
+          )
         }
       } catch (requestError) {
         if (!controller.signal.aborted) {
+          console.error('Could not load documents:', requestError)
           setError(
             requestError instanceof Error
               ? requestError.message
@@ -43,25 +70,52 @@ function FoundDocuments() {
       }
     }
 
-    loadDocuments()
-    return () => controller.abort()
-  }, [])
+    const timer = setTimeout(loadDocuments, search.trim() ? 250 : 0)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [retryKey, search])
 
-  const filteredDocuments = useMemo(() => {
-    const searchText = search.trim().toLowerCase()
-    if (!searchText) {
-      return documents
+  async function handleLoadMore() {
+    if (nextOffset === null || loadingMore) {
+      return
     }
 
-    return documents.filter((document) =>
-      [
-        document.document_type,
-        document.discovery_location,
-        document.reference_code,
-        document.pickup_point_name,
-      ].some((value) => value?.toLowerCase().includes(searchText)),
-    )
-  }, [documents, search])
+    setLoadingMore(true)
+    setError('')
+    try {
+      const params = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(nextOffset),
+      })
+      if (search.trim()) {
+        params.set('search', search.trim())
+      }
+      const data = await apiRequest(`/api/documents/?${params}`)
+      const page = getDocumentPage(data)
+      setDocuments((currentDocuments) => [
+        ...currentDocuments,
+        ...page.documents,
+      ])
+      setNextOffset(
+        page.nextOffset === null
+          ? null
+          : nextOffset + page.documents.length,
+      )
+    } catch (requestError) {
+      console.error('Could not load more documents:', requestError)
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Could not load more documents.',
+      )
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const hasMoreDocuments = nextOffset !== null
 
   return (
     <section>
@@ -113,12 +167,19 @@ function FoundDocuments() {
       )}
 
       {error && (
-        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-700" role="alert">
-          Could not load documents: {error}
-        </p>
+        <div className="mt-6 flex flex-col gap-3 rounded-lg bg-red-50 p-4 text-red-700 sm:flex-row sm:items-center sm:justify-between" role="alert">
+          <p>Could not load documents: {error}</p>
+          <button
+            className="w-fit font-semibold underline"
+            onClick={() => setRetryKey((key) => key + 1)}
+            type="button"
+          >
+            Try again
+          </button>
+        </div>
       )}
 
-      {!loading && !error && filteredDocuments.length === 0 && (
+      {!loading && !error && documents.length === 0 && (
         <div className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center">
           <h2 className="font-semibold text-slate-800">No documents found</h2>
           <p className="mt-2 text-sm text-slate-500">
@@ -129,8 +190,8 @@ function FoundDocuments() {
         </div>
       )}
 
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
-        {filteredDocuments.map((document) => (
+      <div className="mt-6 grid gap-4 md:grid-cols-2" aria-busy={loading}>
+        {documents.map((document) => (
           <article
             className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
             key={document.id}
@@ -174,6 +235,19 @@ function FoundDocuments() {
           </article>
         ))}
       </div>
+
+      {hasMoreDocuments && !loading && (
+        <div className="mt-8 flex justify-center">
+          <button
+            className="min-h-11 rounded-lg border border-emerald-700 px-5 py-2 font-semibold text-emerald-800 transition hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+            disabled={loadingMore}
+            onClick={handleLoadMore}
+            type="button"
+          >
+            {loadingMore ? 'Loading…' : 'Load more documents'}
+          </button>
+        </div>
+      )}
     </section>
   )
 }

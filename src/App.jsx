@@ -1,18 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { auth } from './lib/firebase'
 import { apiRequest } from './lib/api'
 import ProtectedRoute from './components/ProtectedRoute'
-import DashboardLayout from './layouts/DashboardLayout'
-import Dashboard from './pages/Dashboard'
-import DocumentDetails from './pages/DocumentDetails'
-import FoundDocuments from './pages/FoundDocuments'
 import Login from './pages/Login'
-import NotFound from './pages/NotFound'
-import PickupPoints from './pages/PickupPoints'
-import RegisterDocument from './pages/RegisterDocument'
-import SearchDocuments from './pages/SearchDocuments'
+
+const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const DocumentDetails = lazy(() => import('./pages/DocumentDetails'))
+const FoundDocuments = lazy(() => import('./pages/FoundDocuments'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const PickupPoints = lazy(() => import('./pages/PickupPoints'))
+const RegisterDocument = lazy(() => import('./pages/RegisterDocument'))
+const SearchDocuments = lazy(() => import('./pages/SearchDocuments'))
 
 function App() {
   const [user, setUser] = useState(null)
@@ -95,31 +96,39 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={<Login user={user} isLoading={isLoading} authError={authError} />}
-        />
-        <Route element={<ProtectedRoute user={user} isLoading={isLoading} />}>
+      <Suspense
+        fallback={
+          <main className="grid min-h-screen place-items-center text-slate-600" role="status">
+            Loading page…
+          </main>
+        }
+      >
+        <Routes>
           <Route
-            element={
-              <DashboardLayout
-                user={user}
-                onLogout={() => signOut(auth)}
-              />
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="documents" element={<FoundDocuments />} />
-            <Route path="documents/new" element={<RegisterDocument />} />
-            <Route path="documents/:id" element={<DocumentDetails />} />
-            <Route path="search" element={<SearchDocuments />} />
-            <Route path="pickup-points" element={<PickupPoints />} />
-            <Route path="*" element={<NotFound />} />
+            path="/login"
+            element={<Login user={user} isLoading={isLoading} authError={authError} />}
+          />
+          <Route element={<ProtectedRoute user={user} isLoading={isLoading} />}>
+            <Route
+              element={
+                <DashboardLayout
+                  user={user}
+                  onLogout={() => signOut(auth)}
+                />
+              }
+            >
+              <Route index element={<Dashboard />} />
+              <Route path="documents" element={<FoundDocuments />} />
+              <Route path="documents/new" element={<RegisterDocument />} />
+              <Route path="documents/:id" element={<DocumentDetails />} />
+              <Route path="search" element={<SearchDocuments />} />
+              <Route path="pickup-points" element={<PickupPoints />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Route>
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }
