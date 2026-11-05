@@ -63,3 +63,48 @@ pickup-point, and detail routes are placeholders for subsequent work.
 npm run build
 npm run lint
 ```
+
+## Deploy to Cloudflare Pages
+
+This frontend is a static Vite app and can be deployed from GitHub with
+Cloudflare Pages:
+
+1. In Cloudflare, open **Workers & Pages → Create application → Pages →
+   Connect to Git** and select the `found-link-frontend` repository.
+2. Set the production branch to `main`.
+3. Use these build settings:
+
+   | Setting | Value |
+   | --- | --- |
+   | Framework preset | React (Vite) |
+   | Build command | `npm run build` |
+   | Build output directory | `dist` |
+   | Root directory | `/` |
+
+4. In the Pages project settings, add the following build-time environment
+   variables for both Production and Preview deployments:
+
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_STORAGE_BUCKET`
+   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_FIREBASE_MEASUREMENT_ID` (optional)
+   - `VITE_API_URL` — set to `https://found-link-backend.onrender.com`
+
+   Use the web app values from Firebase Project settings. These Firebase web
+   configuration values are public client settings; never add a Firebase
+   service-account key or database password to frontend variables.
+5. In Firebase Authentication, enable the Google and Email/Password providers
+   and add the deployed `*.pages.dev` hostname and any custom domain under
+   **Authorized domains**.
+6. In the Render backend's `CORS_ALLOWED_ORIGINS` environment setting, add the
+   exact production Pages origin (for example, `https://your-project.pages.dev`)
+   and any custom frontend domain, then redeploy the backend. Preview deployment
+   origins must also be explicitly allowed before they can call the API.
+
+Pages serves the SPA entry point for client-side routes such as `/login` and
+`/documents` by default, so direct navigation and refresh work without a
+custom redirect rule. Pushing to `main` triggers a production deployment when
+the Git integration is enabled.
