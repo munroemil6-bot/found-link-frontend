@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FileText, LayoutDashboard, LogOut, MapPin, Search } from 'lucide-react'
+import { FileText, LayoutDashboard, LogOut, MapPin, Search, ClipboardList, GitCompareArrows, CheckCircle2 } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
 const links = [
@@ -7,6 +7,9 @@ const links = [
   { to: '/documents', label: 'Found Documents', mobileLabel: 'Found', icon: FileText },
   { to: '/search', label: 'Find a Document', mobileLabel: 'Search', icon: Search },
   { to: '/pickup-points', label: 'Pickup Points', mobileLabel: 'Locations', icon: MapPin },
+  { to: '/lost-reports', label: 'Lost Reports', mobileLabel: 'Lost', icon: ClipboardList },
+  { to: '/matches', label: 'Potential Matches', mobileLabel: 'Matches', icon: GitCompareArrows },
+  { to: '/handovers', label: 'Handovers', mobileLabel: 'Returns', icon: CheckCircle2 },
 ]
 
 function Sidebar({ onLogout }) {
@@ -62,7 +65,7 @@ function Sidebar({ onLogout }) {
 
       <nav
         aria-label="Main navigation"
-        className="grid grid-cols-5 gap-1 lg:flex lg:flex-1 lg:flex-col lg:gap-2"
+        className="grid grid-cols-3 gap-1 lg:flex lg:flex-1 lg:flex-col lg:gap-2"
       >
         {links.map(({ to, label, mobileLabel, icon: Icon, end }) => (
           <NavLink
@@ -70,7 +73,7 @@ function Sidebar({ onLogout }) {
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium leading-tight transition lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
+              `${to === '/' || to === '/search' ? 'flex' : 'hidden lg:flex'} min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-[10px] font-medium leading-tight transition lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2.5 lg:text-sm ${
                 isActive
                   ? 'bg-emerald-50 text-emerald-800'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -84,7 +87,7 @@ function Sidebar({ onLogout }) {
         ))}
         {logoutButton(true)}
         {logoutError && (
-          <p className="col-span-5 px-2 text-center text-xs text-red-700 lg:hidden" role="alert">
+          <p className="col-span-4 px-2 text-center text-xs text-red-700 lg:hidden" role="alert">
             {logoutError}
           </p>
         )}

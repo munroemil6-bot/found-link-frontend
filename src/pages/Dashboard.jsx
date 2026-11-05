@@ -1,8 +1,29 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle, Clock3, FileText, Package } from 'lucide-react'
+import {
+  CheckCircle,
+  ClipboardList,
+  Clock3,
+  FileText,
+  GitCompareArrows,
+  MapPin,
+  Package,
+  Plus,
+  Search,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import StatCard from '../components/StatCard'
 import { apiRequest } from '../lib/api'
+
+const pageLinks = [
+  { to: '/documents', label: 'Found Documents', description: 'Browse recovered documents.', icon: FileText },
+  { to: '/documents/new', label: 'Register a Document', description: 'Add a newly found document.', icon: Plus },
+  { to: '/search', label: 'Find a Document', description: 'Search for a document.', icon: Search },
+  { to: '/pickup-points', label: 'Pickup Points', description: 'Find document collection locations.', icon: MapPin },
+  { to: '/lost-reports', label: 'Lost Reports', description: 'View submitted lost-document reports.', icon: ClipboardList },
+  { to: '/lost-reports/new', label: 'Report a Lost Document', description: 'Submit a lost-document report.', icon: Plus },
+  { to: '/matches', label: 'Potential Matches', description: 'Review possible document matches.', icon: GitCompareArrows },
+  { to: '/handovers', label: 'Handovers', description: 'Record and review document returns.', icon: CheckCircle },
+]
 
 const statDefinitions = [
   { label: 'Documents Found', key: 'found', icon: FileText },
@@ -108,6 +129,34 @@ function Dashboard() {
             isLoading={isLoading}
           />
         ))}
+      </section>
+
+      <section aria-labelledby="page-links-heading">
+        <h2 id="page-links-heading" className="text-lg font-semibold text-slate-900">
+          Go to a page
+        </h2>
+        <nav
+          aria-label="Application pages"
+          className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {pageLinks.map(({ to, label, description, icon: Icon }) => (
+            <Link
+              key={to}
+              className="group flex min-h-28 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
+              to={to}
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-800">
+                <Icon aria-hidden="true" size={20} />
+              </span>
+              <span>
+                <span className="block font-semibold text-slate-900 group-hover:text-emerald-800">
+                  {label}
+                </span>
+                <span className="mt-1 block text-sm text-slate-600">{description}</span>
+              </span>
+            </Link>
+          ))}
+        </nav>
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">

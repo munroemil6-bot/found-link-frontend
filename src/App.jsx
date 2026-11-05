@@ -14,6 +14,11 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 const PickupPoints = lazy(() => import('./pages/PickupPoints'))
 const RegisterDocument = lazy(() => import('./pages/RegisterDocument'))
 const SearchDocuments = lazy(() => import('./pages/SearchDocuments'))
+const LostReports = lazy(() => import('./pages/LostReports'))
+const ReportLostDocument = lazy(() => import('./pages/ReportLostDocument'))
+const LostReportDetails = lazy(() => import('./pages/LostReportDetails'))
+const Matches = lazy(() => import('./pages/Matches'))
+const Handovers = lazy(() => import('./pages/Handovers'))
 
 function App() {
   const [user, setUser] = useState(null)
@@ -123,6 +128,11 @@ function App() {
               <Route path="documents/:id" element={<DocumentDetails />} />
               <Route path="search" element={<SearchDocuments />} />
               <Route path="pickup-points" element={<PickupPoints />} />
+              <Route path="lost-reports" element={<LostReports />} />
+              <Route path="lost-reports/new" element={<ReportLostDocument />} />
+              <Route path="lost-reports/:id" element={<LostReportDetails />} />
+              <Route path="matches" element={<Matches />} />
+              <Route path="handovers" element={<Handovers />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Route>
