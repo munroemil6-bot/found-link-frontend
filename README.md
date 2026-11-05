@@ -59,8 +59,9 @@ The dashboard loads database-aggregated counts and the five latest entries from
 time from `/api/documents/` and loads subsequent pages on demand; search is
 debounced and performed by the backend. The registration form posts new
 records to `/api/documents/`, and the pickup-points page loads
-`/api/pickup-points/`. The dedicated search and document-detail routes are
-placeholders for subsequent work.
+`/api/pickup-points/`. Selecting a document opens `/documents/:id`, which
+retrieves and displays that record from `/api/documents/:id/`. The dedicated
+search route is a placeholder for subsequent work.
 
 ## Checks
 
