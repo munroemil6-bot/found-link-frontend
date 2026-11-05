@@ -54,8 +54,11 @@ the browser.
 Grant officer or administrator roles only through Django admin or another
 trusted backend process.
 
-The dashboard loads `/api/documents/`. Document registration, search,
-pickup-point, and detail routes are placeholders for subsequent work.
+The dashboard and found-documents pages load `/api/documents/`. The found
+documents page supports client-side filtering, the registration form posts new
+records to `/api/documents/`, and the pickup-points page loads
+`/api/pickup-points/`. The dedicated search and document-detail routes are
+placeholders for subsequent work.
 
 ## Checks
 
